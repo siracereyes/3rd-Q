@@ -16,6 +16,7 @@ export interface QuizResult extends UserData {
   score: number;
   totalQuestions: number;
   timestamp: number;
+  ipAddress?: string;
 }
 
 export type Section = 

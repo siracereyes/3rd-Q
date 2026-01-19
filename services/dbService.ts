@@ -1,35 +1,43 @@
 
 import { QuizResult } from '../types';
 
-const LEADERBOARD_KEY = 'ethereal_leaderboard';
-
 /**
- * In a real Vercel deployment, you would use an API route to interact with Vercel KV or Postgres.
- * Example API call:
- * const response = await fetch('/api/results', {
- *   method: 'POST',
- *   body: JSON.stringify(result)
- * });
+ * Communicates with the Vercel Serverless Function (api/leaderboard.ts)
  */
 
 export const saveResult = async (result: QuizResult): Promise<void> => {
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const existing = localStorage.getItem(LEADERBOARD_KEY);
-  const leaderboard: QuizResult[] = existing ? JSON.parse(existing) : [];
-  
-  leaderboard.push(result);
-  
-  // Sort by score (desc) and timestamp (asc for ties)
-  leaderboard.sort((a, b) => b.score - a.score || a.timestamp - b.timestamp);
-  
-  localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(leaderboard));
+  try {
+    const response = await fetch('/api/leaderboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(result),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to save score to database');
+    }
+  } catch (error) {
+    console.error('Database Error:', error);
+    // Fallback for local preview if API is not deployed
+    const existing = localStorage.getItem('ethereal_fallback_db');
+    const db = existing ? JSON.parse(existing) : [];
+    db.push(result);
+    localStorage.setItem('ethereal_fallback_db', JSON.stringify(db));
+  }
 };
 
 export const getTopScores = async (limit: number = 10): Promise<QuizResult[]> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  const existing = localStorage.getItem(LEADERBOARD_KEY);
-  const leaderboard: QuizResult[] = existing ? JSON.parse(existing) : [];
-  return leaderboard.slice(0, limit);
+  try {
+    const response = await fetch(`/api/leaderboard?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch leaderboard');
+    return await response.json();
+  } catch (error) {
+    console.error('Leaderboard Fetch Error:', error);
+    // Fallback for local preview
+    const existing = localStorage.getItem('ethereal_fallback_db');
+    const db: QuizResult[] = existing ? JSON.parse(existing) : [];
+    return db
+      .sort((a, b) => b.score - a.score || a.timestamp - b.timestamp)
+      .slice(0, limit);
+  }
 };

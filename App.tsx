@@ -1,10 +1,9 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RAW_QUESTIONS, SECTIONS } from './constants';
 import { Question, UserData, QuizResult } from './types';
 import { saveResult, getTopScores } from './services/dbService';
 
-// Utility for shuffling
 const shuffleArray = <T,>(array: T[]): T[] => {
   const newArr = [...array];
   for (let i = newArr.length - 1; i > 0; i--) {
@@ -21,13 +20,11 @@ const App: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<'correct' | 'wrong' | null>(null);
   const [topScores, setTopScores] = useState<QuizResult[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Initialize Quiz
   const startQuiz = () => {
-    if (!userData.firstName || !userData.lastName) {
+    if (!userData.firstName.trim() || !userData.lastName.trim()) {
       alert("Please enter your full name.");
       return;
     }
@@ -38,6 +35,7 @@ const App: React.FC = () => {
     setQuestions(shuffledQs);
     setCurrentIndex(0);
     setScore(0);
+    setSelectedOption(null);
     setView('quiz');
   };
 
@@ -49,35 +47,31 @@ const App: React.FC = () => {
     
     if (isCorrect) {
       setScore(prev => prev + 1);
-      setFeedback('correct');
-    } else {
-      setFeedback('wrong');
     }
 
+    // Delay for transition without showing the correct answer
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setSelectedOption(null);
-        setFeedback(null);
       } else {
         finishQuiz();
       }
-    }, 1500);
+    }, 1000);
   };
 
   const finishQuiz = async () => {
     setIsSubmitting(true);
-    const finalScore = score + (feedback === 'correct' ? 1 : 0);
     const result: QuizResult = {
       ...userData,
-      score: finalScore,
-      totalQuestions: RAW_QUESTIONS.length,
+      score: score,
+      totalQuestions: questions.length,
       timestamp: Date.now()
     };
     
     await saveResult(result);
     
-    if (finalScore >= RAW_QUESTIONS.length * 0.8) {
+    if (score >= questions.length * 0.8) {
       // @ts-ignore
       confetti({
         particleCount: 150,
@@ -92,42 +86,46 @@ const App: React.FC = () => {
   };
 
   const showLeaderboard = async () => {
+    setIsSubmitting(true);
     const scores = await getTopScores(10);
     setTopScores(scores);
+    setIsSubmitting(false);
     setView('leaderboard');
   };
 
   const renderRegister = () => (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-slide-up">
-      <div className="glass p-8 md:p-12 rounded-[30px] w-full max-w-lg text-center">
-        <h1 className="text-3xl font-bold text-slate-800 mb-2">Ethereal Reviewer</h1>
-        <p className="text-slate-500 mb-8">Enter your details to start the session</p>
+      <div className="glass p-8 md:p-12 rounded-[30px] w-full max-w-lg text-center shadow-xl">
+        <h1 className="text-3xl font-bold text-slate-800 mb-2">Online Long Test</h1>
+        <p className="text-slate-500 mb-8 font-medium">Family and Consumers Science</p>
         
         <div className="space-y-4 text-left">
-          <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 mb-1 block">First Name</label>
-            <input 
-              type="text" 
-              className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all"
-              placeholder="e.g. Jane"
-              value={userData.firstName}
-              onChange={e => setUserData({...userData, firstName: e.target.value})}
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">First Name</label>
+              <input 
+                type="text" 
+                className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all text-slate-700"
+                placeholder="Jane"
+                value={userData.firstName}
+                onChange={e => setUserData({...userData, firstName: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Last Name</label>
+              <input 
+                type="text" 
+                className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all text-slate-700"
+                placeholder="Doe"
+                value={userData.lastName}
+                onChange={e => setUserData({...userData, lastName: e.target.value})}
+              />
+            </div>
           </div>
           <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 mb-1 block">Last Name</label>
-            <input 
-              type="text" 
-              className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all"
-              placeholder="e.g. Doe"
-              value={userData.lastName}
-              onChange={e => setUserData({...userData, lastName: e.target.value})}
-            />
-          </div>
-          <div>
-            <label className="text-xs font-semibold uppercase text-slate-400 mb-1 block">Section</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5 block">Section</label>
             <select 
-              className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all appearance-none cursor-pointer"
+              className="w-full bg-white/50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-rose-200 transition-all appearance-none cursor-pointer text-slate-700"
               value={userData.section}
               onChange={e => setUserData({...userData, section: e.target.value})}
             >
@@ -138,9 +136,9 @@ const App: React.FC = () => {
 
         <button 
           onClick={startQuiz}
-          className="w-full mt-10 bg-slate-800 text-white font-semibold py-4 rounded-xl haptic-btn shadow-lg shadow-slate-200 hover:bg-slate-700 transition-all"
+          className="w-full mt-10 bg-slate-800 text-white font-semibold py-4 rounded-xl haptic-btn shadow-lg shadow-slate-200 hover:bg-slate-700 transition-all tracking-wide"
         >
-          Begin Review
+          START ASSESSMENT
         </button>
       </div>
     </div>
@@ -152,7 +150,6 @@ const App: React.FC = () => {
 
     return (
       <div className="max-w-3xl mx-auto px-4 py-12 animate-slide-up" key={currentIndex}>
-        {/* Progress Bar */}
         <div className="w-full bg-white/30 h-1.5 rounded-full mb-8 overflow-hidden">
           <div 
             className="h-full bg-rose-300 transition-all duration-700 ease-out"
@@ -160,24 +157,23 @@ const App: React.FC = () => {
           />
         </div>
 
-        <div className="flex justify-between items-center mb-6">
-          <span className="text-xs font-bold text-rose-400 tracking-widest uppercase">Question {currentIndex + 1} of {questions.length}</span>
-          <span className="text-xs font-bold text-slate-400 tracking-widest uppercase">Score: {score}</span>
+        <div className="flex justify-between items-center mb-6 px-2">
+          <span className="text-[10px] font-bold text-rose-400 tracking-[0.2em] uppercase">Part {currentIndex + 1} / {questions.length}</span>
+          <span className="text-[10px] font-bold text-slate-300 tracking-[0.2em] uppercase italic">Assessment in Progress</span>
         </div>
 
-        <div className="glass p-8 md:p-12 rounded-[40px] shadow-2xl">
-          <h2 className="text-xl md:text-2xl font-semibold text-slate-800 mb-10 leading-relaxed">
+        <div className="glass p-8 md:p-12 rounded-[40px] shadow-2xl relative">
+          <h2 className="text-xl md:text-2xl font-semibold text-slate-800 mb-12 leading-relaxed">
             {currentQuestion.text}
           </h2>
 
           <div className="grid grid-cols-1 gap-4">
             {currentQuestion.options.map((option, idx) => {
               const isSelected = selectedOption === option;
-              let bgClass = "bg-white/50 border-slate-100 hover:border-rose-200 hover:bg-white";
+              let btnClass = "bg-white/50 border-slate-100 hover:border-rose-200 hover:bg-white";
               
               if (isSelected) {
-                if (feedback === 'correct') bgClass = "bg-green-100 border-green-500 shadow-lg shadow-green-100 text-green-700";
-                else if (feedback === 'wrong') bgClass = "bg-red-100 border-red-500 shadow-lg shadow-red-100 text-red-700";
+                btnClass = "bg-rose-50 border-rose-300 shadow-lg shadow-rose-100 ring-2 ring-rose-100";
               }
 
               return (
@@ -185,12 +181,12 @@ const App: React.FC = () => {
                   key={idx}
                   disabled={selectedOption !== null}
                   onClick={() => handleOptionClick(option)}
-                  className={`flex items-center text-left p-6 border-2 rounded-[25px] haptic-btn transition-all-custom group ${bgClass}`}
+                  className={`flex items-center text-left p-6 border-2 rounded-[25px] haptic-btn transition-all-custom group ${btnClass}`}
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 text-xs font-bold transition-all ${isSelected ? 'bg-white/50' : 'bg-slate-100 text-slate-400 group-hover:bg-rose-100 group-hover:text-rose-400'}`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 text-[10px] font-bold transition-all ${isSelected ? 'bg-rose-200 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-rose-100 group-hover:text-rose-400'}`}>
                     {String.fromCharCode(65 + idx)}
                   </div>
-                  <span className="font-medium">{option}</span>
+                  <span className={`font-medium text-sm md:text-base ${isSelected ? 'text-rose-600' : 'text-slate-600'}`}>{option}</span>
                 </button>
               );
             })}
@@ -203,32 +199,32 @@ const App: React.FC = () => {
   const renderResult = () => (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-slide-up">
       <div className="glass p-12 rounded-[40px] w-full max-w-lg text-center relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-200 via-rose-300 to-rose-200"></div>
-        <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-rose-50 rounded-full border-4 border-white shadow-sm">
-          <span className="text-4xl">✨</span>
+        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-rose-100 via-rose-300 to-rose-100"></div>
+        <div className="mb-8 inline-flex items-center justify-center w-20 h-20 bg-rose-50 rounded-full border-4 border-white shadow-inner">
+          <span className="text-3xl">✓</span>
         </div>
-        <h2 className="text-3xl font-bold text-slate-800 mb-2">Review Complete!</h2>
-        <p className="text-slate-400 mb-8">Excellent effort, {userData.firstName}.</p>
+        <h2 className="text-3xl font-bold text-slate-800 mb-2">Test Completed</h2>
+        <p className="text-slate-400 mb-8 font-medium italic">Good luck with your final results, {userData.firstName}.</p>
         
-        <div className="bg-white/40 p-8 rounded-[30px] border border-white/50 mb-10">
-          <p className="text-sm font-semibold uppercase tracking-widest text-slate-400 mb-1">Final Score</p>
-          <div className="text-6xl font-black text-slate-800">
-            {score}<span className="text-2xl font-medium text-slate-300">/{questions.length}</span>
+        <div className="bg-white/40 p-10 rounded-[35px] border border-white/50 mb-10 shadow-sm">
+          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400 mb-2">Score Achieved</p>
+          <div className="text-7xl font-black text-slate-800 tracking-tighter">
+            {score}<span className="text-3xl font-medium text-slate-200 ml-1">/50</span>
           </div>
         </div>
 
         <div className="space-y-4">
           <button 
             onClick={showLeaderboard}
-            className="w-full bg-slate-800 text-white font-semibold py-4 rounded-xl haptic-btn shadow-lg hover:bg-slate-700 transition-all"
+            className="w-full bg-slate-800 text-white font-bold py-4 rounded-2xl haptic-btn shadow-xl shadow-slate-200 hover:bg-slate-700 transition-all tracking-widest text-xs"
           >
-            View Leaderboard
+            VIEW RANKINGS
           </button>
           <button 
-            onClick={() => setView('register')}
-            className="w-full text-slate-500 font-semibold py-4 rounded-xl hover:bg-white/50 transition-all"
+            onClick={() => window.location.reload()}
+            className="w-full text-slate-400 font-bold py-4 rounded-2xl hover:bg-white/50 transition-all text-[10px] tracking-widest uppercase"
           >
-            Retake Quiz
+            Refresh & Restart
           </button>
         </div>
       </div>
@@ -239,28 +235,41 @@ const App: React.FC = () => {
     <div className="max-w-2xl mx-auto px-4 py-12 animate-slide-up">
       <div className="glass p-8 md:p-12 rounded-[40px] shadow-2xl">
         <div className="flex items-center justify-between mb-10">
-          <h2 className="text-3xl font-bold text-slate-800">Top Performers</h2>
-          <button onClick={() => setView('register')} className="text-rose-400 font-semibold text-sm hover:underline">Back Home</button>
+          <div>
+            <h2 className="text-3xl font-bold text-slate-800 leading-none mb-2">Top 10</h2>
+            <p className="text-xs text-slate-400 font-semibold uppercase tracking-widest">Global Standings</p>
+          </div>
+          <button onClick={() => setView('register')} className="text-rose-400 font-bold text-xs uppercase tracking-wider hover:text-rose-600 transition-colors">Exit</button>
         </div>
 
         <div className="space-y-3">
           {topScores.length === 0 ? (
-            <p className="text-center text-slate-400 py-12">No records found yet.</p>
+            <div className="text-center py-12">
+              <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-slate-300">∅</span>
+              </div>
+              <p className="text-slate-400 font-medium italic">No scores logged yet.</p>
+            </div>
           ) : (
             topScores.map((res, i) => (
-              <div key={i} className={`flex items-center justify-between p-5 rounded-[22px] border ${i < 3 ? 'bg-white border-rose-100 shadow-sm' : 'bg-white/30 border-transparent'}`}>
+              <div key={i} className={`flex items-center justify-between p-5 rounded-[22px] border transition-all ${i === 0 ? 'bg-white border-rose-200 shadow-md scale-[1.02]' : 'bg-white/30 border-transparent shadow-sm'}`}>
                 <div className="flex items-center">
-                  <span className={`w-10 h-10 flex items-center justify-center rounded-full font-bold mr-4 ${i === 0 ? 'bg-yellow-100 text-yellow-600' : i === 1 ? 'bg-slate-100 text-slate-500' : i === 2 ? 'bg-orange-50 text-orange-400' : 'text-slate-300'}`}>
+                  <div className={`w-10 h-10 flex items-center justify-center rounded-full font-black mr-4 text-sm ${
+                    i === 0 ? 'bg-rose-100 text-rose-500' : 
+                    i === 1 ? 'bg-slate-100 text-slate-500' : 
+                    i === 2 ? 'bg-orange-50 text-orange-400' : 
+                    'text-slate-300'
+                  }`}>
                     {i + 1}
-                  </span>
+                  </div>
                   <div>
-                    <h4 className="font-bold text-slate-800">{res.firstName} {res.lastName}</h4>
-                    <p className="text-xs text-slate-400 font-medium">{res.section}</p>
+                    <h4 className="font-bold text-slate-800 text-sm md:text-base">{res.firstName} {res.lastName}</h4>
+                    <p className="text-[10px] text-slate-400 font-bold tracking-wider uppercase">{res.section}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-slate-700">{res.score}/{res.totalQuestions}</div>
-                  <div className="text-[10px] text-slate-300 uppercase tracking-widest">{new Date(res.timestamp).toLocaleDateString()}</div>
+                  <div className="font-black text-slate-700 text-lg">{res.score}<span className="text-[10px] text-slate-300 ml-0.5">/50</span></div>
+                  <div className="text-[9px] text-slate-300 font-bold uppercase tracking-widest">{new Date(res.timestamp).toLocaleDateString()}</div>
                 </div>
               </div>
             ))
@@ -269,19 +278,34 @@ const App: React.FC = () => {
 
         <button 
           onClick={() => setView('register')}
-          className="w-full mt-10 bg-rose-50 text-rose-500 font-bold py-4 rounded-2xl hover:bg-rose-100 transition-all haptic-btn"
+          className="w-full mt-10 bg-white border border-slate-100 text-slate-500 font-bold py-4 rounded-2xl hover:bg-slate-50 transition-all haptic-btn text-xs tracking-widest"
         >
-          Return to Hub
+          BACK TO START
         </button>
       </div>
     </div>
   );
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-20 relative">
       {/* Decorative Blur Elements */}
-      <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-rose-100/30 rounded-full blur-[120px] -z-10 translate-x-1/2 -translate-y-1/2"></div>
-      <div className="fixed bottom-0 left-0 w-[400px] h-[400px] bg-white rounded-full blur-[100px] -z-10 -translate-x-1/4 translate-y-1/4"></div>
+      <div className="fixed top-0 right-0 w-[600px] h-[600px] bg-rose-200/20 rounded-full blur-[140px] -z-10 translate-x-1/2 -translate-y-1/2"></div>
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] bg-white rounded-full blur-[120px] -z-10 -translate-x-1/4 translate-y-1/4"></div>
+      
+      {isSubmitting && (
+        <div className="fixed inset-0 z-[100] glass flex items-center justify-center animate-fade-in">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-rose-100 border-t-rose-400 rounded-full animate-spin mx-auto mb-6"></div>
+            <p className="text-slate-500 font-bold text-xs uppercase tracking-[0.3em]">Processing Securely...</p>
+          </div>
+        </div>
+      )}
+
+      <nav className="p-8 flex justify-center">
+        <div className="glass px-6 py-2 rounded-full border border-white/80 shadow-sm flex items-center gap-3">
+          <div className="w-2 h-2 bg-rose-400 rounded-full animate-pulse"></div>
+        </div>
+      </nav>
       
       {view === 'register' && renderRegister()}
       {view === 'quiz' && renderQuiz()}
