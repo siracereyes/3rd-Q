@@ -20,6 +20,7 @@ const App: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
   const [topScores, setTopScores] = useState<QuizResult[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,6 +37,7 @@ const App: React.FC = () => {
     setCurrentIndex(0);
     setScore(0);
     setSelectedOption(null);
+    setShowOptions(false);
     setView('quiz');
   };
 
@@ -49,11 +51,12 @@ const App: React.FC = () => {
       setScore(prev => prev + 1);
     }
 
-    // Delay for transition without showing the correct answer
+    // Delay for transition
     setTimeout(() => {
       if (currentIndex < questions.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setSelectedOption(null);
+        setShowOptions(false); // Reset visibility for the next question
       } else {
         finishQuiz();
       }
@@ -158,38 +161,66 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex justify-between items-center mb-6 px-2">
-          <span className="text-[10px] font-bold text-rose-400 tracking-[0.2em] uppercase">Part {currentIndex + 1} / {questions.length}</span>
-          <span className="text-[10px] font-bold text-slate-300 tracking-[0.2em] uppercase italic">Assessment in Progress</span>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-rose-400 tracking-[0.2em] uppercase">Part {currentIndex + 1} / {questions.length}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <div className={`w-1.5 h-1.5 rounded-full ${showOptions ? 'bg-slate-300' : 'bg-rose-400 animate-pulse'}`}></div>
+              <span className="text-[9px] font-bold text-slate-400 tracking-widest uppercase">
+                {showOptions ? 'Selection Phase' : 'Thinking Phase'}
+              </span>
+            </div>
+          </div>
+          <span className="text-[10px] font-bold text-slate-300 tracking-[0.2em] uppercase italic hidden md:block">FCS Assessment</span>
         </div>
 
-        <div className="glass p-8 md:p-12 rounded-[40px] shadow-2xl relative">
-          <h2 className="text-xl md:text-2xl font-semibold text-slate-800 mb-12 leading-relaxed">
-            {currentQuestion.text}
-          </h2>
+        <div className="glass p-8 md:p-12 rounded-[40px] shadow-2xl relative min-h-[400px] flex flex-col">
+          {!showOptions ? (
+            <h2 className="text-xl md:text-2xl font-semibold text-slate-800 mb-12 leading-relaxed animate-slide-up">
+              {currentQuestion.text}
+            </h2>
+          ) : (
+            <div className="text-center mb-12 animate-slide-up">
+               <span className="text-[10px] font-bold text-slate-300 tracking-[0.4em] uppercase block mb-2">Question hidden</span>
+               <h3 className="text-lg font-bold text-slate-800">Select the best answer from the options below:</h3>
+            </div>
+          )}
 
-          <div className="grid grid-cols-1 gap-4">
-            {currentQuestion.options.map((option, idx) => {
-              const isSelected = selectedOption === option;
-              let btnClass = "bg-white/50 border-slate-100 hover:border-rose-200 hover:bg-white";
-              
-              if (isSelected) {
-                btnClass = "bg-rose-50 border-rose-300 shadow-lg shadow-rose-100 ring-2 ring-rose-100";
-              }
-
-              return (
+          <div className="flex-grow flex flex-col justify-center">
+            {!showOptions ? (
+              <div className="flex justify-center animate-slide-up">
                 <button
-                  key={idx}
-                  disabled={selectedOption !== null}
-                  onClick={() => handleOptionClick(option)}
-                  className={`flex items-center text-left p-6 border-2 rounded-[25px] haptic-btn transition-all-custom group ${btnClass}`}
+                  onClick={() => setShowOptions(true)}
+                  className="bg-slate-800 text-white font-bold py-5 px-12 rounded-2xl haptic-btn shadow-xl shadow-slate-200 hover:bg-slate-700 transition-all tracking-[0.1em] text-xs"
                 >
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 text-[10px] font-bold transition-all ${isSelected ? 'bg-rose-200 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-rose-100 group-hover:text-rose-400'}`}>
-                    {String.fromCharCode(65 + idx)}
-                  </div>
-                  <span className={`font-medium text-sm md:text-base ${isSelected ? 'text-rose-600' : 'text-slate-600'}`}>{option}</span>
+                  CLICK HERE FOR THE CHOICES
                 </button>
-              );
-            })}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 animate-slide-up">
+                {currentQuestion.options.map((option, idx) => {
+                  const isSelected = selectedOption === option;
+                  let btnClass = "bg-white/50 border-slate-100 hover:border-rose-200 hover:bg-white";
+                  
+                  if (isSelected) {
+                    btnClass = "bg-rose-50 border-rose-300 shadow-lg shadow-rose-100 ring-2 ring-rose-100";
+                  }
+
+                  return (
+                    <button
+                      key={idx}
+                      disabled={selectedOption !== null}
+                      onClick={() => handleOptionClick(option)}
+                      className={`flex items-center text-left p-6 border-2 rounded-[25px] haptic-btn transition-all-custom group ${btnClass}`}
+                    >
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center mr-4 text-[10px] font-bold transition-all ${isSelected ? 'bg-rose-200 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-rose-100 group-hover:text-rose-400'}`}>
+                        {String.fromCharCode(65 + idx)}
+                      </div>
+                      <span className={`font-medium text-sm md:text-base ${isSelected ? 'text-rose-600' : 'text-slate-600'}`}>{option}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>

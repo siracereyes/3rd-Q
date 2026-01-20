@@ -10,16 +10,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'POST') {
       const { firstName, lastName, section, score, totalQuestions } = req.body;
       
-      // Get IP address from request headers (standard for Vercel/Proxies)
+      // Get IP address from request headers
       const forwarded = req.headers['x-forwarded-for'];
       const ipAddress = typeof forwarded === 'string' ? forwarded.split(',')[0] : req.socket.remoteAddress || 'unknown';
       
+      /**
+       * UPSERT Logic:
+       * 1. Try to INSERT the record.
+       * 2. If (first_name, last_name, section) already exists (Conflict):
+       * 3. Update the existing record ONLY IF the new score is higher.
+       */
       await sql`
         INSERT INTO leaderboard (first_name, last_name, section, score, total_questions, ip_address)
         VALUES (${firstName}, ${lastName}, ${section}, ${score}, ${totalQuestions}, ${ipAddress})
+        ON CONFLICT (first_name, last_name, section) 
+        DO UPDATE SET
+          score = EXCLUDED.score,
+          total_questions = EXCLUDED.total_questions,
+          ip_address = EXCLUDED.ip_address,
+          created_at = NOW()
+        WHERE EXCLUDED.score > leaderboard.score
       `;
 
-      return res.status(201).json({ message: 'Score saved successfully' });
+      return res.status(201).json({ message: 'Score processed' });
     } 
     
     if (req.method === 'GET') {
@@ -39,7 +52,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         LIMIT ${limit}
       `;
 
-      // Convert Postgres timestamp to numeric for the frontend
       const results = rows.map(row => ({
         ...row,
         timestamp: new Date(row.timestamp).getTime()
